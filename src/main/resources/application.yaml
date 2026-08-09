@@ -1,0 +1,141 @@
+spring:
+  application:
+    name: nextforgeai
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${google.oauth2.client.id}
+            client-secret: ${google.oauth2.client.secret}
+
+  datasource:
+    url: ${datasource.url}
+    username: ${datasource.username}
+    password: ${datasource.password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 3000ms
+
+  cache:
+    type: redis
+
+  ai:
+    openai:
+      api-key: ${openapi.api-key}
+      base-url: https://openrouter.ai/api
+      chat:
+        options:
+          model: ${openapi.chat.model}
+          temperature: 0.0
+
+  mail:
+    host: ${mail.host}
+    port: ${mail.port}
+    username: ${mail.username}
+    password: ${mail.password}
+    properties:
+      mail:
+        smtp:
+          auth: ${mail.properties.mail.smtp.auth}
+          starttls:
+            enable: ${mail.properties.mail.smtp.starttls.enable}
+
+server:
+  servlet:
+    context-path: /nextforgeai/api/v1
+
+jwt.secret-key: ${jwt.secret-key}
+
+frontend:
+  url: http://localhost:5173
+
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin123
+  project-bucket: projects
+
+stripe:
+  api:
+    secret: ${stripe.api.secret}
+  webhook:
+    secret: ${stripe.webhook.secret}
+
+logging:
+  level:
+    org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor: DEBUG
+    com.stripe: DEBUG
+    Stripe: DEBUG
+    com.yawar.nextforgeai: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security.oauth2: TRACE
+    org.springframework.security.oauth2.client: TRACE
+    org.springframework.security.oauth2.core: TRACE
+    org.springframework.security.web.authentication: TRACE
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,caches,circuitbreakers,retries
+
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+
+  retry:
+    instances:
+
+      llmRetry:
+        max-attempts: 3
+        wait-duration: 2s
+        retry-exceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.ResourceAccessException
+
+      stripeRetry:
+        max-attempts: 2
+        wait-duration: 1s
+
+      emailRetry:
+        max-attempts: 3
+        wait-duration: 1s
+
+  circuitbreaker:
+    instances:
+
+      llmCircuitBreaker:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+
+      stripeCircuitBreaker:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+
+  timelimiter:
+    instances:
+
+      llmTimeLimiter:
+        timeout-duration: 60s
