@@ -2,50 +2,95 @@ package com.yawar.nextforgeai.service.impl;
 
 import com.yawar.nextforgeai.service.EmailService;
 import com.yawar.nextforgeai.util.EmailTemplateUtil;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
 public class EmailServiceImpl implements EmailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
-
     @Value("${frontend.url}")
     private String FRONTEND_URL;
 
-    private void sendHtmlEmail(String to, String subject, String htmlBody)
-            throws MessagingException {
+    @Value("${brevo.api-key}")
+    private String brevoApiKey;
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper =
-                new MimeMessageHelper(message, true, "UTF-8");
+    @Value("${brevo.sender-email}")
+    private String brevoSenderEmail;
 
-        helper.setTo(to);
-        helper.setSubject(subject);
-        helper.setText(htmlBody, true); // true = HTML
+    @Value("${brevo.sender-name}")
+    private String brevoSenderName;
 
-        try{
-            mailSender.send(message);
+    private final RestClient brevoClient = RestClient.builder()
+            .baseUrl("https://api.brevo.com")
+            .build();
+
+    private void sendHtmlEmail(
+            String to,
+            String subject,
+            String htmlBody
+    ) {
+
+        Map<String, Object> sender = new HashMap<>();
+        sender.put("name", brevoSenderName);
+        sender.put("email", brevoSenderEmail);
+
+        Map<String, Object> recipient = new HashMap<>();
+        recipient.put("email", to);
+
+        Map<String, Object> requestBody = new HashMap<>();
+
+        requestBody.put("sender", sender);
+        requestBody.put("to", List.of(recipient));
+        requestBody.put("subject", subject);
+        requestBody.put("htmlContent", htmlBody);
+
+        try {
+
+            String response = brevoClient
+                    .post()
+                    .uri("/v3/smtp/email")
+                    .header("api-key", brevoApiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(requestBody)
+                    .retrieve()
+                    .body(String.class);
+
+            log.info(
+                    "Email sent successfully via Brevo. to={}, subject={}, response={}",
+                    to,
+                    subject,
+                    response
+            );
+
         } catch (Exception e) {
-            log.error("Failed To Send Mail - {}",subject);
-            throw new RuntimeException(e);
+
+            log.error(
+                    "Failed to send email via Brevo. to={}, subject={}",
+                    to,
+                    subject,
+                    e
+            );
+
+            throw new RuntimeException(
+                    "Failed to send email via Brevo",
+                    e
+            );
         }
     }
 
     @Async
     @Override
-    public void sendOtpEmail(String email, String otp) throws MessagingException {
+    public void sendOtpEmail(String email, String otp)  {
 
         log.info("========== OTP Email Process Started ==========");
         log.info("Preparing OTP email for: {}", email);
@@ -70,7 +115,7 @@ public class EmailServiceImpl implements EmailService {
 
     @Async
     @Override
-    public void sendRegisterSuccessfulEmail(String email) throws MessagingException {
+    public void sendRegisterSuccessfulEmail(String email)  {
 
         log.info("========== Registration Success Email Process Started ==========");
         log.info("Preparing registration success email for: {}", email);
@@ -93,7 +138,7 @@ public class EmailServiceImpl implements EmailService {
 
     @Async
     @Override
-    public void sendPasswordResetEmail(String email, String resetLink) throws MessagingException{
+    public void sendPasswordResetEmail(String email, String resetLink) {
         log.info("========== Reset Password Email Process Started ==========");
         log.info("Preparing registration success email for: {}", email);
         log.info("Reset Link: {}",resetLink);
@@ -116,7 +161,7 @@ public class EmailServiceImpl implements EmailService {
 
     @Async
     @Override
-    public void sendPasswordResetSuccessfulEmail(String email) throws MessagingException {
+    public void sendPasswordResetSuccessfulEmail(String email)  {
 
         log.info("========== Password Reset Success Email Process Started ==========");
         log.info("Preparing password reset success email for: {}", email);
@@ -173,7 +218,7 @@ public class EmailServiceImpl implements EmailService {
                     .replace("${TIMESTAMP}", Instant.now().toString());
 
             sendHtmlEmail(
-                    "mdyawarrkt@gmail.com",
+                    brevoSenderEmail,
                     "NextForge AI - " + eventTitle,
                     html
             );

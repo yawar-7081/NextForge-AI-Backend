@@ -1,12 +1,11 @@
 package com.yawar.nextforgeai.service;
 
-import jakarta.mail.MessagingException;
 
 public interface EmailService {
-    void sendOtpEmail(String email, String otp) throws MessagingException;
-    void sendRegisterSuccessfulEmail(String email) throws MessagingException;
-    void sendPasswordResetEmail(String email, String resetLink) throws MessagingException;
-    void sendPasswordResetSuccessfulEmail(String email) throws MessagingException;
+    void sendOtpEmail(String email, String otp) ;
+    void sendRegisterSuccessfulEmail(String email) ;
+    void sendPasswordResetEmail(String email, String resetLink) ;
+    void sendPasswordResetSuccessfulEmail(String email) ;
 
     void sendMailToOwner(
             String eventTitle,

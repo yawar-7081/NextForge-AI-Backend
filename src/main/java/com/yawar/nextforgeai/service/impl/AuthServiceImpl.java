@@ -56,7 +56,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
     @Transactional
     @Override
-    public RegisterResponse register(RegisterRequest request) throws MessagingException {
+    public RegisterResponse register(RegisterRequest request)  {
 
         log.info("Registration request received for email={}", request.getEmail());
 
@@ -147,7 +147,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
     @Transactional
     @Override
-    public AuthResponse verifyOtpAndFilnalizeRegister(String userId, OtpRequest request, HttpServletRequest httpServletRequest) throws MessagingException {
+    public AuthResponse verifyOtpAndFilnalizeRegister(String userId, OtpRequest request, HttpServletRequest httpServletRequest)  {
 
         log.info("OTP verification started. userId={}", userId);
 
@@ -297,7 +297,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
     @Override
     @Transactional
-    public void forgotPassword(ForgotPasswordRequest request) throws MessagingException {
+    public void forgotPassword(ForgotPasswordRequest request)  {
 
         log.info("Password reset requested for email={}", request.getEmail());
 
@@ -348,7 +348,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
     }
     @Override
     @Transactional
-    public void resetPassword(ResetPasswordRequest request) throws MessagingException {
+    public void resetPassword(ResetPasswordRequest request)  {
 
         log.info("Password reset request received.");
 

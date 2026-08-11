@@ -42,17 +42,17 @@ spring:
           model: ${openapi_chat_model}
           temperature: 0.0
 
-  mail:
-    host: ${mail_host}
-    port: ${mail_port}
-    username: ${mail_username}
-    password: ${mail_password}
-    properties:
-      mail:
-        smtp:
-          auth: ${mail_properties_mail_smtp_auth}
-          starttls:
-            enable: ${mail_properties_mail_smtp_starttls_enable}
+#  mail:
+#    host: ${mail_host}
+#    port: ${mail_port}
+#    username: ${mail_username}
+#    password: ${mail_password}
+#    properties:
+#      mail:
+#        smtp:
+#          auth: ${mail_properties_mail_smtp_auth}
+#          starttls:
+#            enable: ${mail_properties_mail_smtp_starttls_enable}
 
 server:
   port: ${PORT:8080}
@@ -143,3 +143,9 @@ backblaze:
     bucket: ${B2_BUCKET}
     access-key: ${B2_ACCESS_KEY}
     secret-key: ${B2_SECRET_KEY}
+
+
+brevo:
+  api-key: ${BREVO_API_KEY}
+  sender-email: ${BREVO_SENDER_EMAIL}
+  sender-name: ${BREVO_SENDER_NAME}
