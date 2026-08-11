@@ -38,7 +38,8 @@ public class SecurityConfig {
         httpSecurity.csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> {
-                    auth.requestMatchers("/errors", "/auth/**", "/v3/api-docs", "/payments/webhooks/**")
+                    auth.requestMatchers("/actuator/health" ,
+                            "/actuator/info","/errors", "/auth/**", "/v3/api-docs", "/payments/webhooks/**")
                             .permitAll()
                             .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                             .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()

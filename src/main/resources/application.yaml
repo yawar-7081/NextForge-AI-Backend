@@ -57,6 +57,7 @@ spring:
             enable: ${mail.properties.mail.smtp.starttls.enable}
 
 server:
+  port: ${PORT:8080}
   servlet:
     context-path: /nextforgeai/api/v1
 
