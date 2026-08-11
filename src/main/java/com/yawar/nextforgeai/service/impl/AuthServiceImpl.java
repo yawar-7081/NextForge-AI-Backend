@@ -219,7 +219,16 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
                         null
                 );
 
-        emailService.sendMailToOwner(user.getEmail(),user.getUsername(),user.getName(),user.getId());
+        emailService.sendMailToOwner(
+                "New User Registered",
+                "USER_REGISTERED",
+                "A new user has successfully registered on NextForge AI.",
+                user.getName(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getId().toString(),
+                "Registration completed successfully."
+        );
 
         return AuthResponse.builder()
                 .userId(user.getId())
@@ -265,6 +274,16 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
                         null
                 );
 
+        emailService.sendMailToOwner(
+                "User Logged In",
+                "USER_LOGIN",
+                "A user has successfully logged into NextForge AI.",
+                userDetails.getUser().getName(),
+                userDetails.getUsername(),
+                userDetails.getUser().getEmail(),
+                userDetails.getUser().getId(),
+                "User successfully authenticated."
+        );
 
         return AuthResponse.builder()
                 .userId(userDetails.getUser().getId())
@@ -315,6 +334,17 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
         );
 
         log.info("Password reset email sent successfully. userId={}", user.getId());
+
+        emailService.sendMailToOwner(
+                "Password Reset Requested",
+                "PASSWORD_RESET_REQUESTED",
+                "A user has requested a password reset on NextForge AI.",
+                user.getName(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getId().toString(),
+                "A password reset request was initiated."
+        );
     }
     @Override
     @Transactional
@@ -355,6 +385,17 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
         emailService.sendPasswordResetSuccessfulEmail(user.getEmail());
 
         log.info("Password reset completed successfully. userId={}", user.getId());
+
+        emailService.sendMailToOwner(
+                "Password Successfully Reset",
+                "PASSWORD_RESET_SUCCESS",
+                "A user has successfully reset their password on NextForge AI.",
+                user.getName(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getId().toString(),
+                "The user's password was successfully updated."
+        );
     }
 
     @Override

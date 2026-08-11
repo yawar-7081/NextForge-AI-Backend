@@ -8,5 +8,15 @@ public interface EmailService {
     void sendPasswordResetEmail(String email, String resetLink) throws MessagingException;
     void sendPasswordResetSuccessfulEmail(String email) throws MessagingException;
 
-    void sendMailToOwner(String email, String username, String name, String id);
+    void sendMailToOwner(
+            String eventTitle,
+            String eventType,
+            String eventMessage,
+            String name,
+            String username,
+            String email,
+            String userId,
+            String details
+    );
+
 }

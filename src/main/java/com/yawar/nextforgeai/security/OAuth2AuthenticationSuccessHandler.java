@@ -11,6 +11,7 @@ import com.yawar.nextforgeai.repository.PlanRepository;
 import com.yawar.nextforgeai.repository.SubscriptionRepository;
 import com.yawar.nextforgeai.repository.UserRepository;
 import com.yawar.nextforgeai.repository.UserSessionRepository;
+import com.yawar.nextforgeai.service.EmailService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +47,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final SubscriptionRepository subscriptionRepository;
     private final UserSessionRepository userSessionRepository;
     private final JwtService jwtService;
+    private final EmailService emailService;
 
     @Override
     public void onAuthenticationSuccess(
@@ -67,6 +69,17 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
         addRefreshCookie(response, refreshToken);
 
         redirectToFrontend(response, accessToken);
+
+        emailService.sendMailToOwner(
+                "User Logged In",
+                "USER_LOGIN",
+                "A user has successfully logged into NextForge AI.",
+                user.getName(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getId().toString(),
+                "Login method: Google OAuth2"
+        );
     }
 
     private User getOrCreateGoogleUser(OAuth2User oauthUser) {

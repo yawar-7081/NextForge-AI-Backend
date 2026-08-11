@@ -14,6 +14,7 @@ import com.yawar.nextforgeai.llm.CodeGenerationTools;
 import com.yawar.nextforgeai.repository.*;
 import com.yawar.nextforgeai.security.JwtService;
 import com.yawar.nextforgeai.service.AiGenerationService;
+import com.yawar.nextforgeai.service.EmailService;
 import com.yawar.nextforgeai.service.ProjectFileService;
 import com.yawar.nextforgeai.service.UsageService;
 import com.yawar.nextforgeai.util.PromptUtils;
@@ -23,6 +24,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -47,6 +49,7 @@ public class AiGenerationServiceImpl implements AiGenerationService {
     private final ChatEventParser chatEventParser;
     private final UsageService usageService;
     private final UsageLogRepository usageLogRepository;
+    private final EmailService emailService;
 
     private final Long totalToken = 20000L;
     @PreAuthorize(value = "@security.canEditProject(#projectId)")
@@ -58,6 +61,16 @@ public class AiGenerationServiceImpl implements AiGenerationService {
         TotalTokenResponse totalTokenResponse = usageService.getTotalToken();
 
         if(totalTokenResponse.getTotalToken() > totalToken){
+            emailService.sendMailToOwner(
+                    "Daily AI Token Limit Reached",
+                    "AI_LIMIT_REACHED",
+                    "A user has reached their daily AI token usage limit on NextForge AI.",
+                    "None",
+                    userId,
+                    "None",
+                    userId,
+                    "Daily usage: 20,000 / 20,000 tokens"
+            );
             throw new BadRequestException("Daily Quota End.");
         }
 

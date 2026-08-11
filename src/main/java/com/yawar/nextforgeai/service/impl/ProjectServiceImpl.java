@@ -14,6 +14,7 @@ import com.yawar.nextforgeai.repository.ProjectMemberRepository;
 import com.yawar.nextforgeai.repository.ProjectRepository;
 import com.yawar.nextforgeai.repository.UserRepository;
 import com.yawar.nextforgeai.security.JwtService;
+import com.yawar.nextforgeai.service.EmailService;
 import com.yawar.nextforgeai.service.ProjectService;
 import com.yawar.nextforgeai.service.ProjectTemplateService;
 import com.yawar.nextforgeai.util.CacheNames;
@@ -47,6 +48,7 @@ public class ProjectServiceImpl implements ProjectService {
     private final ModelMapper modelMapper;
     private final JwtService jwtService;
     private final ChatEventRepository chatEventRepository;
+    private final EmailService emailService;
 
     @Override
     @Transactional
@@ -122,6 +124,16 @@ public class ProjectServiceImpl implements ProjectService {
         log.info("Project template initialized successfully. projectId={}",
                 project.getId());
 
+        emailService.sendMailToOwner(
+                "New Project Created",
+                "PROJECT_CREATED",
+                "A user has successfully created a new project on NextForge AI.",
+                user.getName(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getId().toString(),
+                "Project ID: " + project.getId()
+        );
         return modelMapper.map(project, ProjectResponse.class);
     }
 

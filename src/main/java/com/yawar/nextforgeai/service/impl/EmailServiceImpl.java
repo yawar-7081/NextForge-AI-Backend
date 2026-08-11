@@ -12,6 +12,8 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+
 @Slf4j
 @Service
 public class EmailServiceImpl implements EmailService {
@@ -135,7 +137,65 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendMailToOwner(String email, String username, String name, String id) {
+    @Async
+    public void sendMailToOwner(
+            String eventTitle,
+            String eventType,
+            String eventMessage,
+            String name,
+            String username,
+            String email,
+            String userId,
+            String details
+    ) {
 
+        try {
+
+            log.info(
+                    "Sending admin notification. eventType={}, userId={}",
+                    eventType,
+                    userId
+            );
+
+            String html = EmailTemplateUtil.loadTemplate(
+                    "adminNotificationTemplate.html"
+            );
+
+            html = html
+                    .replace("${EVENT_TITLE}", safe(eventTitle))
+                    .replace("${EVENT_TYPE}", safe(eventType))
+                    .replace("${EVENT_MESSAGE}", safe(eventMessage))
+                    .replace("${NAME}", safe(name))
+                    .replace("${USERNAME}", safe(username))
+                    .replace("${EMAIL}", safe(email))
+                    .replace("${USER_ID}", safe(userId))
+                    .replace("${DETAILS}", safe(details))
+                    .replace("${TIMESTAMP}", Instant.now().toString());
+
+            sendHtmlEmail(
+                    "mdyawarrkt@gmail.com",
+                    "NextForge AI - " + eventTitle,
+                    html
+            );
+
+            log.info(
+                    "Admin notification sent successfully. eventType={}, userId={}",
+                    eventType,
+                    userId
+            );
+
+        } catch (Exception ex) {
+
+            log.error(
+                    "Failed to send admin notification. eventType={}, userId={}",
+                    eventType,
+                    userId,
+                    ex
+            );
+        }
+    }
+
+    private String safe(String value) {
+        return value == null ? "-" : value;
     }
 }
