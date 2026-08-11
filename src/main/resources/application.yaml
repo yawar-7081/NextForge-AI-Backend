@@ -1,6 +1,8 @@
 spring:
   application:
     name: nextforgeai
+  main:
+    lazy-initialization: true
 
   security:
     oauth2:
@@ -19,8 +21,6 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-
   data:
     redis:
       host: ${redis.host}
