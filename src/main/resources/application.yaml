@@ -58,13 +58,14 @@ spring:
 
 server:
   port: ${PORT:8080}
+  address: 0.0.0.0
   servlet:
     context-path: /nextforgeai/api/v1
 
 jwt.secret-key: ${jwt.secret-key}
 
 frontend:
-  url: http://localhost:5173
+  url: ${frontend.url}
 
 minio:
   url: http://localhost:9000
