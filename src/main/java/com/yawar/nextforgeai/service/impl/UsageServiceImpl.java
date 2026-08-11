@@ -32,7 +32,7 @@ public class UsageServiceImpl implements UsageService {
     @Override
     @Cacheable(
             value = CacheNames.USER_TOKEN_USAGE,
-            key = "#root.target.jwtService.getLoggedInUserId()",
+            key = "@jwtService.getLoggedInUserId()",
             unless = "#result == null"
     )
     public TotalTokenResponse getTotalToken() {
@@ -62,7 +62,7 @@ public class UsageServiceImpl implements UsageService {
     @Override
     @Cacheable(
             value = CacheNames.USER_TOKEN_USAGE,
-            key = "#root.target.jwtService.getLoggedInUserId()",
+            key = "@jwtService.getLoggedInUserId()",
             unless = "#result == null"
     )
     public UsedTokenResponse getUsedToken() {

@@ -2,9 +2,11 @@ package com.yawar.nextforgeai.service.impl;
 
 
 import com.yawar.nextforgeai.dto.StreamResponse;
+import com.yawar.nextforgeai.dto.TotalTokenResponse;
 import com.yawar.nextforgeai.entity.*;
 import com.yawar.nextforgeai.entity.enums.ChatEventType;
 import com.yawar.nextforgeai.entity.enums.MessageRole;
+import com.yawar.nextforgeai.error.BadRequestException;
 import com.yawar.nextforgeai.error.ResourceNotFoundException;
 import com.yawar.nextforgeai.llm.ChatEventParser;
 import com.yawar.nextforgeai.llm.FileTreeContextAdvisor;
@@ -46,13 +48,18 @@ public class AiGenerationServiceImpl implements AiGenerationService {
     private final UsageService usageService;
     private final UsageLogRepository usageLogRepository;
 
+    private final Long totalToken = 20000L;
     @PreAuthorize(value = "@security.canEditProject(#projectId)")
     @Override
     public Flux<StreamResponse> streamResponse(String message, String projectId) {
 
         String userId = jwtService.getLoggedInUserId();
 
+        TotalTokenResponse totalTokenResponse = usageService.getTotalToken();
 
+        if(totalTokenResponse.getTotalToken() > totalToken){
+            throw new BadRequestException("Daily Quota End.");
+        }
 
         CodeGenerationTools codeGenerationTools = new CodeGenerationTools(projectFileService,projectId);
 

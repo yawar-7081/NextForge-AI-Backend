@@ -1,9 +1,14 @@
 package com.yawar.nextforgeai.service.impl;
 
-
-import com.yawar.nextforgeai.entity.Subscription;
-import com.yawar.nextforgeai.entity.User;
+import com.yawar.nextforgeai.dto.*;
+import com.yawar.nextforgeai.entity.*;
+import com.yawar.nextforgeai.entity.enums.Provider;
+import com.yawar.nextforgeai.entity.enums.SubscriptionStatus;
 import com.yawar.nextforgeai.error.BadRequestException;
+import com.yawar.nextforgeai.error.ResourceNotFoundException;
+import com.yawar.nextforgeai.repository.*;
+import com.yawar.nextforgeai.security.CustomUserDetail;
+import com.yawar.nextforgeai.security.JwtService;
 import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
@@ -29,20 +34,20 @@ import java.util.UUID;
 @Service
 public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthService {
 
-    private final com.yawar.nextforgeai.repository.UserRepository userRepository;
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final com.yawar.nextforgeai.repository.EmailVerificationTokenRepository tokenRepository;
-    private final com.yawar.nextforgeai.service.EmailService emailService;
-    private final com.yawar.nextforgeai.security.JwtService jwtService;
+    private final EmailVerificationTokenRepository tokenRepository;
+    private final EmailService emailService;
+    private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final com.yawar.nextforgeai.repository.PasswordResetTokenRepository passwordResetTokenRepository;
-    private final com.yawar.nextforgeai.repository.SubscriptionRepository subscriptionRepository;
-    private final com.yawar.nextforgeai.repository.PlanRepository planRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final SubscriptionRepository subscriptionRepository;
+    private final PlanRepository planRepository;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final long PASSWORD_RESET_TOKEN_EXPIRY =
             Duration.ofMinutes(10).toMillis();
     private final SessionService sessionService;
-    private final com.yawar.nextforgeai.repository.UserSessionRepository userSessionRepository;
+    private final UserSessionRepository userSessionRepository;
 
     @Value("${frontend.url}")
     private String FRONTEND_URL;
@@ -51,7 +56,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
     @Transactional
     @Override
-    public com.yawar.nextforgeai.dto.RegisterResponse register(com.yawar.nextforgeai.dto.RegisterRequest request) throws MessagingException {
+    public RegisterResponse register(RegisterRequest request) throws MessagingException {
 
         log.info("Registration request received for email={}", request.getEmail());
 
@@ -81,7 +86,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
                     .email(request.getEmail())
                     .username(generatedUsername)
                     .password(passwordEncoder.encode(request.getPassword()))
-                    .provider(com.yawar.nextforgeai.entity.enums.Provider.LOCAL)
+                    .provider(Provider.LOCAL)
                     .isActive(false)
                     .isEmailVerified(false)
                     .isDeleted(false)
@@ -96,7 +101,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
         String otp = generateRandomOtp();
 
-        com.yawar.nextforgeai.entity.EmailVerificationToken verificationToken = com.yawar.nextforgeai.entity.EmailVerificationToken.builder()
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
                 .email(user.getEmail())
                 .otp(otp)
                 .expiresAt(System.currentTimeMillis() + (1000 * 60 * 5))
@@ -110,15 +115,14 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
         emailService.sendOtpEmail(
                 user.getEmail(),
-                otp,
-                user.getName()
+                otp
         );
 
         log.info("OTP email sent successfully to {}", user.getEmail());
 
         log.info("Registration completed successfully. userId={}", user.getId());
 
-        return new com.yawar.nextforgeai.dto.RegisterResponse(user.getId());
+        return new RegisterResponse(user.getId());
     }
 
     private String generateUniqueUsername(String email) {
@@ -143,12 +147,12 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
     @Transactional
     @Override
-    public com.yawar.nextforgeai.dto.AuthResponse verifyOtpAndFilnalizeRegister(String userId, com.yawar.nextforgeai.dto.OtpRequest request, HttpServletRequest httpServletRequest) {
+    public AuthResponse verifyOtpAndFilnalizeRegister(String userId, OtpRequest request, HttpServletRequest httpServletRequest) throws MessagingException {
 
         log.info("OTP verification started. userId={}", userId);
 
-        com.yawar.nextforgeai.entity.User user = userRepository.findById(userId)
-                .orElseThrow(() -> new com.yawar.nextforgeai.error.ResourceNotFoundException("User", userId));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
         if (user.isDeleted()) {
             log.warn("OTP verification failed. Deleted user. userId={}", userId);
@@ -160,7 +164,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
             throw new BadRequestException("User already registered.");
         }
 
-        com.yawar.nextforgeai.entity.EmailVerificationToken verificationToken = tokenRepository
+        EmailVerificationToken verificationToken = tokenRepository
                 .findTopByEmailAndIsUsedFalseOrderByCreatedAtDesc(user.getEmail())
                 .orElseThrow(() -> new BadRequestException("No active verification token found."));
 
@@ -185,13 +189,13 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
         log.info("User account activated. userId={}", userId);
 
-        com.yawar.nextforgeai.entity.Plan freePlan = planRepository.findByName("FREE")
-                .orElseThrow(() -> new com.yawar.nextforgeai.error.ResourceNotFoundException("Plan", "FREE"));
+        Plan freePlan = planRepository.findByName("FREE")
+                .orElseThrow(() -> new ResourceNotFoundException("Plan", "FREE"));
 
         Subscription subscription = Subscription.builder()
                 .user(user)
                 .plan(freePlan)
-                .subscriptionStatus(com.yawar.nextforgeai.entity.enums.SubscriptionStatus.ACTIVE)
+                .subscriptionStatus(SubscriptionStatus.ACTIVE)
                 .currentPeriodStart(Instant.now())
                 .currentPeriodEnd(null)
                 .stripeSubscriptionId(null)
@@ -199,11 +203,13 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
         subscriptionRepository.save(subscription);
 
+        emailService.sendRegisterSuccessfulEmail(user.getEmail());
+
         log.info("Free subscription assigned. userId={}, plan={}",
                 user.getId(),
                 freePlan.getName());
 
-        String accessToken = jwtService.generateAccessToken(null,new com.yawar.nextforgeai.security.CustomUserDetail(user));
+        String accessToken = jwtService.generateAccessToken(null,new CustomUserDetail(user));
 
         String refreshToken =
                 sessionService.createSession(
@@ -213,7 +219,9 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
                         null
                 );
 
-        return com.yawar.nextforgeai.dto.AuthResponse.builder()
+        emailService.sendMailToOwner(user.getEmail(),user.getUsername(),user.getName(),user.getId());
+
+        return AuthResponse.builder()
                 .userId(user.getId())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -225,7 +233,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
 
     @Override
-    public com.yawar.nextforgeai.dto.AuthResponse login(com.yawar.nextforgeai.dto.LoginRequest request, HttpServletRequest httpServletRequest) {
+    public AuthResponse login(LoginRequest request, HttpServletRequest httpServletRequest) {
 
         log.info("Login attempt received. email={}", request.getEmail());
 
@@ -241,7 +249,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
             throw new BadRequestException("Invalid email or password.");
         }
 
-        com.yawar.nextforgeai.security.CustomUserDetail userDetails = (com.yawar.nextforgeai.security.CustomUserDetail) authentication.getPrincipal();
+        CustomUserDetail userDetails = (CustomUserDetail) authentication.getPrincipal();
 
         log.info("User authenticated successfully. userId={}", userDetails.getUser().getId());
 
@@ -257,7 +265,8 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
                         null
                 );
 
-        return com.yawar.nextforgeai.dto.AuthResponse.builder()
+
+        return AuthResponse.builder()
                 .userId(userDetails.getUser().getId())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -269,21 +278,21 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
     @Override
     @Transactional
-    public void forgotPassword(com.yawar.nextforgeai.dto.ForgotPasswordRequest request) {
+    public void forgotPassword(ForgotPasswordRequest request) throws MessagingException {
 
         log.info("Password reset requested for email={}", request.getEmail());
 
-        com.yawar.nextforgeai.entity.User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new com.yawar.nextforgeai.error.ResourceNotFoundException("User", request.getEmail()));
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User", request.getEmail()));
 
         if (!user.isActive() || user.isDeleted()) {
             log.warn("Password reset rejected. Account inactive or deleted. userId={}", user.getId());
             throw new BadRequestException("Account is inactive or deleted.");
         }
 
-        String resetToken = UUID.randomUUID().toString();
+        String resetToken = UUID.randomUUID().toString() + UUID.randomUUID().toString() + UUID.randomUUID().toString();
 
-        com.yawar.nextforgeai.entity.PasswordResetToken token = com.yawar.nextforgeai.entity.PasswordResetToken.builder()
+        PasswordResetToken token = PasswordResetToken.builder()
                 .user(user)
                 .token(resetToken)
                 .expiresAt(System.currentTimeMillis() + PASSWORD_RESET_TOKEN_EXPIRY)
@@ -302,7 +311,6 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
         emailService.sendPasswordResetEmail(
                 user.getEmail(),
-                user.getName(),
                 resetLink
         );
 
@@ -310,11 +318,11 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
     }
     @Override
     @Transactional
-    public void resetPassword(com.yawar.nextforgeai.dto.ResetPasswordRequest request) {
+    public void resetPassword(ResetPasswordRequest request) throws MessagingException {
 
         log.info("Password reset request received.");
 
-        com.yawar.nextforgeai.entity.PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken())
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByToken(request.getToken())
                 .orElseThrow(() -> {
                     log.warn("Password reset failed. Invalid token.");
                     return new BadRequestException("Invalid password reset token.");
@@ -344,15 +352,14 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
         log.info("Password updated successfully. userId={}", user.getId());
 
-        // TODO: Invalidate all active refresh tokens / sessions for this user.
-        // sessionService.logoutFromAllDevices(user.getId());
+        emailService.sendPasswordResetSuccessfulEmail(user.getEmail());
 
         log.info("Password reset completed successfully. userId={}", user.getId());
     }
 
     @Override
     @Transactional
-    public com.yawar.nextforgeai.dto.AuthResponse refreshToken(String refreshToken) {
+    public AuthResponse refreshToken(String refreshToken) {
 
         log.info("Refresh token request received.");
 
@@ -364,7 +371,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
             throw new BadRequestException("Invalid refresh token.");
         }
 
-        com.yawar.nextforgeai.entity.UserSession session = userSessionRepository
+        UserSession session = userSessionRepository
                 .findByRefreshTokenAndRevokedFalse(refreshToken)
                 .orElseThrow(() -> {
                     log.warn("Refresh token not found in database.");
@@ -385,7 +392,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
             throw new BadRequestException("Invalid refresh token.");
         }
 
-        com.yawar.nextforgeai.security.CustomUserDetail userDetails = new com.yawar.nextforgeai.security.CustomUserDetail(user);
+        CustomUserDetail userDetails = new CustomUserDetail(user);
 
         String newAccessToken = jwtService.generateAccessToken(
                 null,
@@ -404,7 +411,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
         log.info("Refresh token rotated successfully. userId={}", user.getId());
 
-        return com.yawar.nextforgeai.dto.AuthResponse.builder()
+        return AuthResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
@@ -420,7 +427,7 @@ public class AuthServiceImpl implements com.yawar.nextforgeai.service.AuthServic
 
         log.info("Logout request received.");
 
-        com.yawar.nextforgeai.entity.UserSession session = userSessionRepository
+        UserSession session = userSessionRepository
                 .findByRefreshTokenAndRevokedFalse(refreshToken)
                 .orElseThrow(() -> new BadRequestException("Invalid refresh token."));
 

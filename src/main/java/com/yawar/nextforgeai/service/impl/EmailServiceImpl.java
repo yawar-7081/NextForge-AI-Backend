@@ -6,8 +6,10 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -16,6 +18,9 @@ public class EmailServiceImpl implements EmailService {
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Value("${frontend.url}")
+    private String FRONTEND_URL;
 
     private void sendHtmlEmail(String to, String subject, String htmlBody)
             throws MessagingException {
@@ -28,82 +33,109 @@ public class EmailServiceImpl implements EmailService {
         helper.setSubject(subject);
         helper.setText(htmlBody, true); // true = HTML
 
-        mailSender.send(message);
+        try{
+            mailSender.send(message);
+        } catch (Exception e) {
+            log.error("Failed To Send Mail - {}",subject);
+            throw new RuntimeException(e);
+        }
     }
 
+    @Async
     @Override
-    public void sendOtpEmail(String email, String otp, String name) throws MessagingException {
+    public void sendOtpEmail(String email, String otp) throws MessagingException {
 
         log.info("========== OTP Email Process Started ==========");
         log.info("Preparing OTP email for: {}", email);
-        log.info("Recipient Name: {}", name);
         log.info("Generated OTP: {}", otp);
 
-//        String html = EmailTemplateUtil.loadTemplate("otp-email.html");
-//        log.debug("Email template loaded successfully.");
-//
-//        html = html.replace("${otp}", otp);
-//        html = html.replace("${name}", name);
-//
-//        log.debug("Placeholders replaced successfully.");
-//        log.debug("Name placeholder exists after replacement: {}", html.contains("${name}"));
-//        log.debug("OTP placeholder exists after replacement: {}", html.contains("${otp}"));
+        String html = EmailTemplateUtil.loadTemplate("otp.html");
+        log.debug("Email template loaded successfully.");
+
+        html = html.replace("{{OTP}}", otp);
+
+        log.debug("Placeholders replaced successfully.");
+        log.debug("Name placeholder exists after replacement: {}", html.contains("{{name}}"));
+        log.debug("OTP placeholder exists after replacement: {}", html.contains("{{otp}}"));
 
         log.info("Sending OTP email to: {}", email);
 
-//        sendHtmlEmail(email, "OTP Verification", html);
+        sendHtmlEmail(email, "✨ NextForge AI - OTP Verification", html);
 
         log.info("OTP email sent successfully to {}", email);
         log.info("========== OTP Email Process Completed ==========");
     }
 
+    @Async
     @Override
-    public void sendRegisterSuccessfulEmail(String email, String name) throws MessagingException {
+    public void sendRegisterSuccessfulEmail(String email) throws MessagingException {
 
         log.info("========== Registration Success Email Process Started ==========");
         log.info("Preparing registration success email for: {}", email);
-        log.info("Recipient Name: {}", name);
 
-//        String html = EmailTemplateUtil.loadTemplate("registration-successful.html");
-//        log.debug("Registration success email template loaded successfully.");
-//
-//        html = html.replace("${name}", name);
-//        html = html.replace("${email}", email);
-//
-//        log.debug("Placeholders replaced successfully.");
-//        log.debug("Name placeholder exists after replacement: {}", html.contains("${name}"));
-//        log.debug("Email placeholder exists after replacement: {}", html.contains("${email}"));
+        String html = EmailTemplateUtil.loadTemplate("registrationSuccessful.html");
+        log.debug("Registration success email template loaded successfully.");
+
+        html = html.replace("{{EMAIL}}", email);
+
+        log.debug("Placeholders replaced successfully.");
+        log.debug("Email placeholder exists after replacement: {}", html.contains("{{email}}"));
 
         log.info("Sending registration success email to: {}", email);
 
-//        sendHtmlEmail(email, "🎉 Registration Successful", html);
+        sendHtmlEmail(email, "✨ NextForge AI - 🎉 Registration Successful", html);
 
         log.info("Registration success email sent successfully to {}", email);
         log.info("========== Registration Success Email Process Completed ==========");
     }
 
+    @Async
     @Override
-    public void sendPasswordResetEmail(String email, String name, String resetLink) {
+    public void sendPasswordResetEmail(String email, String resetLink) throws MessagingException{
         log.info("========== Reset Password Email Process Started ==========");
         log.info("Preparing registration success email for: {}", email);
-        log.info("Recipient Name: {}", name);
         log.info("Reset Link: {}",resetLink);
 
-//        String html = EmailTemplateUtil.loadTemplate("registration-successful.html");
-//        log.debug("Registration success email template loaded successfully.");
-//
-//        html = html.replace("${name}", name);
-//        html = html.replace("${email}", email);
-//
-//        log.debug("Placeholders replaced successfully.");
-//        log.debug("Name placeholder exists after replacement: {}", html.contains("${name}"));
-//        log.debug("Email placeholder exists after replacement: {}", html.contains("${email}"));
+        String html = EmailTemplateUtil.loadTemplate("resetPassword.html");
+        log.debug("Registration success email template loaded successfully.");
+
+        html = html.replace("{{email}}", email);
+        html = html.replace("{{RESET_URL}}",resetLink);
+        log.debug("Placeholders replaced successfully.");
+        log.debug("Email placeholder exists after replacement: {}", html.contains("{{email}}"));
 
         log.info("Sending Password Reset email to: {}", email);
 
-//        sendHtmlEmail(email, "🎉 Registration Successful", html);
+        sendHtmlEmail(email, "✨ NextForge AI - Password Reset Link", html);
 
         log.info("Reset Password email sent successfully to {}", email);
         log.info("========== Reset Password Email Process Completed ==========");
+    }
+
+    @Async
+    @Override
+    public void sendPasswordResetSuccessfulEmail(String email) throws MessagingException {
+
+        log.info("========== Password Reset Success Email Process Started ==========");
+        log.info("Preparing password reset success email for: {}", email);
+
+        String html = EmailTemplateUtil.loadTemplate("registrationSuccessful.html");
+        log.debug("Password Reset success email template loaded successfully.");
+
+        html = html.replace("{{LOGIN_URL}}", FRONTEND_URL+"/login");
+
+        log.debug("Placeholders replaced successfully.");
+
+        log.info("Sending password reset success email to: {}", email);
+
+        sendHtmlEmail(email, "✨ NextForge AI - 🎉 Password Reset Successful", html);
+
+        log.info("Password Reset success email sent successfully to {}", email);
+        log.info("========== Registration Success Email Process Completed ==========");
+    }
+
+    @Override
+    public void sendMailToOwner(String email, String username, String name, String id) {
+
     }
 }

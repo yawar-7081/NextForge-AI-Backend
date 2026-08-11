@@ -27,7 +27,12 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 
 
 @Service
@@ -52,6 +57,32 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectResponse createProject(ProjectRequest projectRequest) {
 
         String userId = jwtService.getLoggedInUserId();
+
+        if (projectRepository.existsByUserIdAndIsDeletedFalse(userId)) {
+            throw new BadRequestException(
+                    "You already have an active project."
+            );
+        }
+
+        Optional<Project> lastDeletedProject =
+                projectRepository
+                        .findTopByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(userId);
+
+        if (lastDeletedProject.isPresent()) {
+
+            Instant availableAt = lastDeletedProject
+                    .get()
+                    .getDeletedAt()
+                    .plus(24, ChronoUnit.HOURS);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                    .withZone(ZoneId.systemDefault());
+
+            if (Instant.now().isBefore(availableAt)) {
+                throw new BadRequestException(
+                        "You can create a new project after " + formatter.format(availableAt)
+                );
+            }
+        }
 
         log.info("Project creation requested. userId={}, projectName={}",
                 userId,
@@ -194,7 +225,7 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         project.setDeleted(true);
-
+        project.setDeletedAt(Instant.now());
         projectRepository.save(project);
 
         log.info("Project deleted successfully. projectId={}", projectId);

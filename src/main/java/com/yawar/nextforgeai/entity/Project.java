@@ -54,4 +54,6 @@ public class Project {
 
     @UpdateTimestamp
     Instant updatedAt;
+
+    Instant deletedAt;
 }

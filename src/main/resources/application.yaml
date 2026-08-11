@@ -27,10 +27,11 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${redis.host}
+      port: ${redis.port}
+      username: ${redis.username}
+      password: ${redis.password}
       timeout: 3000ms
-
   cache:
     type: redis
 
@@ -139,3 +140,12 @@ resilience4j:
 
       llmTimeLimiter:
         timeout-duration: 60s
+
+
+backblaze:
+  b2:
+    endpoint: ${B2_ENDPOINT}
+    region: ${B2_REGION}
+    bucket: ${B2_BUCKET}
+    access-key: ${B2_ACCESS_KEY}
+    secret-key: ${B2_SECRET_KEY}

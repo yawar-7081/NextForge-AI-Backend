@@ -38,7 +38,7 @@ public class SubscriptionServiceImpl implements SubscriptionService {
     @Override
     @Cacheable(
             value = CacheNames.USER_SUBSCRIPTION,
-            key = "#root.target.jwtService.getLoggedInUserId()",
+            key = "@jwtService.getLoggedInUserId()",
             unless = "#result == null"
     )
     public SubscriptionResponse getCurrentSubscription() {

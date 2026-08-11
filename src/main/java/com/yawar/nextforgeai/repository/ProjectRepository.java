@@ -60,4 +60,9 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
     Optional<Project> getOwnerProject(@Param("projectId") String projectId,@Param("userId") String userId);
 
 
+    // User cannot create another project while one is active
+    boolean existsByUserIdAndIsDeletedFalse(String userId);
+
+    // Get the most recently deleted project
+    Optional<Project> findTopByUserIdAndIsDeletedTrueOrderByDeletedAtDesc(String userId);
 }

@@ -47,7 +47,7 @@ public class AuthController {
             @PathVariable(value = "userId") String userId,
             @Valid @RequestBody(required = true) com.yawar.nextforgeai.dto.OtpRequest request,
             HttpServletRequest httpServletRequest,
-            HttpServletResponse httpServletResponse){
+            HttpServletResponse httpServletResponse) throws MessagingException {
         com.yawar.nextforgeai.dto.AuthResponse response = authService.verifyOtpAndFilnalizeRegister(userId,request,httpServletRequest);
 
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", response.getRefreshToken())
@@ -98,14 +98,14 @@ public class AuthController {
             value = "/forgot-password",
             consumes = MediaType.APPLICATION_JSON_VALUE
     )
-    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody(required = true) com.yawar.nextforgeai.dto.ForgotPasswordRequest request){
+    public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody(required = true) com.yawar.nextforgeai.dto.ForgotPasswordRequest request) throws MessagingException {
         authService.forgotPassword(request);
         return ResponseEntity.ok(Map.of("message","Password Reset Link Send Successfully"));
     }
 
 
     @PostMapping("/reset-password")
-    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody com.yawar.nextforgeai.dto.ResetPasswordRequest request) {
+    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody com.yawar.nextforgeai.dto.ResetPasswordRequest request) throws MessagingException {
         authService.resetPassword(request);
         return ResponseEntity.ok(Map.of("message", "Password has been successfully reset. You can now login."));
     }

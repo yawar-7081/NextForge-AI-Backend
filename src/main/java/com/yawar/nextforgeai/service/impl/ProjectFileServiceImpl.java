@@ -1,5 +1,6 @@
 package com.yawar.nextforgeai.service.impl;
 
+import com.yawar.nextforgeai.config.BackblazeB2Properties;
 import com.yawar.nextforgeai.dto.FileNode;
 import com.yawar.nextforgeai.dto.ProjectFileContentResponse;
 import com.yawar.nextforgeai.dto.ProjectFileResponse;
@@ -12,9 +13,6 @@ import com.yawar.nextforgeai.repository.ProjectRepository;
 import com.yawar.nextforgeai.security.JwtService;
 import com.yawar.nextforgeai.service.ProjectFileService;
 import io.github.resilience4j.retry.annotation.Retry;
-import io.minio.GetObjectArgs;
-import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +23,13 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.core.ResponseBytes;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -42,10 +47,9 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 
     private final ProjectRepository projectRepository;
     private final ProjectFileRepository projectFileRepository;
-    private final MinioClient minioClient;
     private final JwtService jwtService;
-
-    private static final String BUCKET_NAME = "projects";
+    private final S3Client s3Client;
+    private final BackblazeB2Properties properties;
 
     @Override
     @Cacheable(
@@ -87,41 +91,53 @@ public class ProjectFileServiceImpl implements ProjectFileService {
             unless = "#result == null"
     )
     @PreAuthorize("@security.canViewProject(#projectId)")
-    public ProjectFileContentResponse getProjectPathContent(String projectId, String path) {
+    public ProjectFileContentResponse getProjectPathContent(
+            String projectId,
+            String path
+    ) {
 
         String userId = jwtService.getLoggedInUserId();
 
-        log.info("Fetching project file content. projectId={}, path={}, userId={}",
+        log.info(
+                "Fetching project file content. projectId={}, path={}, userId={}",
                 projectId,
                 path,
-                userId);
+                userId
+        );
 
         projectRepository.findAccessibleProject(projectId, userId)
                 .orElseThrow(() -> {
-                    log.warn("Unauthorized file access. projectId={}, path={}, userId={}",
+                    log.warn(
+                            "Unauthorized file access. projectId={}, path={}, userId={}",
                             projectId,
                             path,
-                            userId);
+                            userId
+                    );
 
                     return new BadRequestException("You can't access this project.");
                 });
 
         String objectName = projectId + "/" + path;
 
-        try (InputStream inputStream = minioClient.getObject(
-                GetObjectArgs.builder()
-                        .bucket(BUCKET_NAME)
-                        .object(objectName)
-                        .build())) {
+        try {
+
+            ResponseBytes<GetObjectResponse> response = s3Client.getObjectAsBytes(
+                    GetObjectRequest.builder()
+                            .bucket(properties.getBucket())
+                            .key(objectName)
+                            .build()
+            );
 
             String content = new String(
-                    inputStream.readAllBytes(),
+                    response.asByteArray(),
                     StandardCharsets.UTF_8
             );
 
-            log.info("Project file loaded successfully. projectId={}, path={}",
+            log.info(
+                    "Project file loaded successfully. projectId={}, path={}",
                     projectId,
-                    path);
+                    path
+            );
 
             return ProjectFileContentResponse.builder()
                     .path(path)
@@ -137,9 +153,13 @@ public class ProjectFileServiceImpl implements ProjectFileService {
                     ex
             );
 
-            throw new RuntimeException("Unable to fetch project file.", ex);
+            throw new RuntimeException(
+                    "Unable to fetch project file.",
+                    ex
+            );
         }
     }
+
 
     @Override
     @Transactional
@@ -150,41 +170,57 @@ public class ProjectFileServiceImpl implements ProjectFileService {
     })
     public void saveFile(String projectId, String path, String fileContent) {
 
-        log.info("Saving project file. projectId={}, path={}", projectId, path);
+        log.info(
+                "Saving project file. projectId={}, path={}",
+                projectId,
+                path
+        );
 
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId));
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Project", projectId)
+                );
 
-        String cleanPath = path.startsWith("/") ? path.substring(1) : path;
+        String cleanPath = path.startsWith("/")
+                ? path.substring(1)
+                : path;
+
         String objectKey = projectId + "/" + cleanPath;
 
         byte[] contentBytes = fileContent.getBytes(StandardCharsets.UTF_8);
 
-        try (InputStream inputStream = new ByteArrayInputStream(contentBytes)) {
+        try {
 
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(BUCKET_NAME)
-                            .object(objectKey)
-                            .stream(inputStream, contentBytes.length, -1)
+            s3Client.putObject(
+                    PutObjectRequest.builder()
+                            .bucket(properties.getBucket())
+                            .key(objectKey)
                             .contentType(determineContentType(cleanPath))
-                            .build()
+                            .contentLength((long) contentBytes.length)
+                            .build(),
+                    RequestBody.fromBytes(contentBytes)
             );
 
             ProjectFile file = projectFileRepository
                     .findByProjectIdAndPath(projectId, cleanPath)
-                    .orElseGet(() -> ProjectFile.builder()
-                            .project(project)
-                            .path(cleanPath)
-                            .minioObjectKey(objectKey)
-                            .createdAt(Instant.now())
-                            .build());
+                    .orElseGet(() ->
+                            ProjectFile.builder()
+                                    .project(project)
+                                    .path(cleanPath)
+                                    .minioObjectKey(objectKey)
+                                    .createdAt(Instant.now())
+                                    .build()
+                    );
 
             file.setUpdatedAt(Instant.now());
 
             projectFileRepository.save(file);
 
-            log.info("Project file saved successfully. projectId={}, path={}", projectId, cleanPath);
+            log.info(
+                    "Project file saved successfully. projectId={}, path={}",
+                    projectId,
+                    cleanPath
+            );
 
         } catch (Exception ex) {
 
@@ -195,10 +231,12 @@ public class ProjectFileServiceImpl implements ProjectFileService {
                     ex
             );
 
-            throw new RuntimeException("Unable to save project file.", ex);
+            throw new RuntimeException(
+                    "Unable to save project file.",
+                    ex
+            );
         }
     }
-
 
     @PreAuthorize("@security.canViewProject(#projectId)")
     @Override
@@ -220,20 +258,22 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 
             for (ProjectFile file : files) {
 
-                InputStream is = minioClient.getObject(
-                        GetObjectArgs.builder()
-                                .bucket(BUCKET_NAME)
-                                .object(file.getMinioObjectKey())
-                                .build()
-                );
+                GetObjectRequest request = GetObjectRequest.builder()
+                        .bucket(properties.getBucket())
+                        .key(file.getMinioObjectKey())
+                        .build();
 
-                zos.putNextEntry(new ZipEntry(file.getPath()));
+                try (ResponseInputStream<GetObjectResponse> inputStream =
+                             s3Client.getObject(request)) {
 
-                is.transferTo(zos);
+                    zos.putNextEntry(
+                            new ZipEntry(file.getPath())
+                    );
 
-                zos.closeEntry();
+                    inputStream.transferTo(zos);
 
-                is.close();
+                    zos.closeEntry();
+                }
             }
 
             zos.finish();
@@ -242,11 +282,19 @@ public class ProjectFileServiceImpl implements ProjectFileService {
 
         } catch (Exception e) {
 
-            log.error("Failed to download project {}", projectId, e);
+            log.error(
+                    "Failed to download project {}",
+                    projectId,
+                    e
+            );
 
-            throw new RuntimeException("Failed to create project zip.", e);
+            throw new RuntimeException(
+                    "Failed to create project zip.",
+                    e
+            );
         }
     }
+
 
     private String determineContentType(String path){
         String type = URLConnection.guessContentTypeFromName(path);
