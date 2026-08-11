@@ -9,48 +9,50 @@ spring:
       client:
         registration:
           google:
-            client-id: ${google.oauth2.client.id}
-            client-secret: ${google.oauth2.client.secret}
+            client-id: ${google_oauth2_client_id}
+            client-secret: ${google_oauth2_client_secret}
 
   datasource:
-    url: ${datasource.url}
-    username: ${datasource.username}
-    password: ${datasource.password}
+    url: ${datasource_url}
+    username: ${datasource_username}
+    password: ${datasource_password}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
+
+
   data:
     redis:
-      host: ${redis.host}
-      port: ${redis.port}
-      username: ${redis.username}
-      password: ${redis.password}
+      host: ${redis_host}
+      port: ${redis_port}
+      username: ${redis_username}
+      password: ${redis_password}
       timeout: 3000ms
   cache:
     type: redis
 
   ai:
     openai:
-      api-key: ${openapi.api-key}
+      api-key: ${openapi_apiKey}
       base-url: https://openrouter.ai/api
       chat:
         options:
-          model: ${openapi.chat.model}
+          model: ${openapi_chat_model}
           temperature: 0.0
 
   mail:
-    host: ${mail.host}
-    port: ${mail.port}
-    username: ${mail.username}
-    password: ${mail.password}
+    host: ${mail_host}
+    port: ${mail_port}
+    username: ${mail_username}
+    password: ${mail_password}
     properties:
       mail:
         smtp:
-          auth: ${mail.properties.mail.smtp.auth}
+          auth: ${mail_properties_mail_smtp_auth}
           starttls:
-            enable: ${mail.properties.mail.smtp.starttls.enable}
+            enable: ${mail_properties_mail_smtp_starttls_enable}
 
 server:
   port: ${PORT:8080}
@@ -58,16 +60,16 @@ server:
   servlet:
     context-path: /nextforgeai/api/v1
 
-jwt.secret-key: ${jwt.secret-key}
+jwt.secret-key: ${jwt_secretKey}
 
 frontend:
-  url: ${frontend.url}
+  url: ${frontend_url}
 
 stripe:
   api:
-    secret: ${stripe.api.secret}
+    secret: ${stripe_api_secret}
   webhook:
-    secret: ${stripe.webhook.secret}
+    secret: ${stripe_webhook_secret}
 
 logging:
   level:
