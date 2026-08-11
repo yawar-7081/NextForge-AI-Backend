@@ -2,9 +2,9 @@ package com.yawar.nextforgeai.service;
 
 
 import com.yawar.nextforgeai.dto.*;
-import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.springframework.messaging.MessagingException;
 
 public interface AuthService {
     com.yawar.nextforgeai.dto.RegisterResponse register(@Valid com.yawar.nextforgeai.dto.RegisterRequest request) throws MessagingException;

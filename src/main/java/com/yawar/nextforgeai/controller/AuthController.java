@@ -4,7 +4,6 @@ package com.yawar.nextforgeai.controller;
 
 import com.yawar.nextforgeai.service.AuthService;
 import com.yawar.nextforgeai.service.SessionService;
-import jakarta.mail.MessagingException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -15,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.MessagingException;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;

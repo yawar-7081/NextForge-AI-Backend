@@ -1,6 +1,7 @@
 package com.yawar.nextforgeai.service;
 
-import jakarta.mail.MessagingException;
+
+import org.springframework.messaging.MessagingException;
 
 public interface EmailService {
     void sendOtpEmail(String email, String otp) throws MessagingException;

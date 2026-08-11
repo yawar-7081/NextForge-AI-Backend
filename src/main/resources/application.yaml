@@ -141,3 +141,7 @@ backblaze:
     bucket: ${B2_BUCKET}
     access-key: ${B2_ACCESS_KEY}
     secret-key: ${B2_SECRET_KEY}
+
+
+resend:
+  api-key: ${RESEND_API_KEY}

@@ -1,14 +1,18 @@
 package com.yawar.nextforgeai.service.impl;
 
+import com.resend.Resend;
+import com.resend.services.emails.model.SendEmailRequest;
+import com.resend.services.emails.model.SendEmailResponse;
 import com.yawar.nextforgeai.service.EmailService;
 import com.yawar.nextforgeai.util.EmailTemplateUtil;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.messaging.MessagingException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -16,10 +20,11 @@ import java.time.Instant;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class EmailServiceImpl implements EmailService {
 
-    @Autowired
-    private JavaMailSender mailSender;
+    private final JavaMailSender mailSender;
+    private final Resend resend;
 
     @Value("${frontend.url}")
     private String FRONTEND_URL;
@@ -27,18 +32,29 @@ public class EmailServiceImpl implements EmailService {
     private void sendHtmlEmail(String to, String subject, String htmlBody)
             throws MessagingException {
 
-        MimeMessage message = mailSender.createMimeMessage();
-        MimeMessageHelper helper =
-                new MimeMessageHelper(message, true, "UTF-8");
+        SendEmailRequest sendEmailRequest = SendEmailRequest.builder()
+                .from("onboarding@resend.dev")
+                .to(to)
+                .subject(subject)
+                .html(htmlBody)
+                .build();
 
-        helper.setTo(to);
-        helper.setSubject(subject);
-        helper.setText(htmlBody, true); // true = HTML
 
-        try{
-            mailSender.send(message);
+//        MimeMessage message = mailSender.createMimeMessage();
+//        MimeMessageHelper helper =
+//                new MimeMessageHelper(message, true, "UTF-8");
+//
+//        helper.setTo(to);
+//        helper.setSubject(subject);
+//        helper.setText(htmlBody, true); // true = HTML
+
+        try {
+//            mailSender.send(message);
+            SendEmailResponse data = resend.emails().send(sendEmailRequest);
+            log.info("Email sent successfully through Resend. id={}",
+                    data.getId());
         } catch (Exception e) {
-            log.error("Failed To Send Mail - {}",subject);
+            log.error("Failed To Send Mail - {}", subject);
             throw new RuntimeException(e);
         }
     }
@@ -93,16 +109,16 @@ public class EmailServiceImpl implements EmailService {
 
     @Async
     @Override
-    public void sendPasswordResetEmail(String email, String resetLink) throws MessagingException{
+    public void sendPasswordResetEmail(String email, String resetLink) throws MessagingException {
         log.info("========== Reset Password Email Process Started ==========");
         log.info("Preparing registration success email for: {}", email);
-        log.info("Reset Link: {}",resetLink);
+        log.info("Reset Link: {}", resetLink);
 
         String html = EmailTemplateUtil.loadTemplate("resetPassword.html");
         log.debug("Registration success email template loaded successfully.");
 
         html = html.replace("{{email}}", email);
-        html = html.replace("{{RESET_URL}}",resetLink);
+        html = html.replace("{{RESET_URL}}", resetLink);
         log.debug("Placeholders replaced successfully.");
         log.debug("Email placeholder exists after replacement: {}", html.contains("{{email}}"));
 
@@ -124,7 +140,7 @@ public class EmailServiceImpl implements EmailService {
         String html = EmailTemplateUtil.loadTemplate("registrationSuccessful.html");
         log.debug("Password Reset success email template loaded successfully.");
 
-        html = html.replace("{{LOGIN_URL}}", FRONTEND_URL+"/login");
+        html = html.replace("{{LOGIN_URL}}", FRONTEND_URL + "/login");
 
         log.debug("Placeholders replaced successfully.");
 
