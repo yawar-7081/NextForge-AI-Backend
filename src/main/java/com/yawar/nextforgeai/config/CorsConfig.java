@@ -34,7 +34,7 @@ public class CorsConfig {
 
         configuration.setAllowedOrigins(List.of(
                 "https://nextforgeai-frontend.onrender.com",
-                "https://next-forge-ai-frontend.vercel.app/",
+                "https://nextforgeai-yawar.vercel.app/",
                 "http://localhost:5173"
         ));
 
